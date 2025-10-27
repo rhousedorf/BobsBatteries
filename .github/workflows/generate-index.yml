@@ -1,0 +1,46 @@
+﻿name: Generate index.html for docs
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "docs/**"
+
+permissions:
+  contents: write
+
+jobs:
+  build-index:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Generate index.html
+        run: |
+          OUTPUT="docs/index.html"
+          echo "<!DOCTYPE html>" > $OUTPUT
+          echo "<html><head><meta charset='UTF-8'>" >> $OUTPUT
+          echo "<meta name='viewport' content='width=device-width, initial-scale=1.0'>" >> $OUTPUT
+          echo "<link rel='stylesheet' href='style.css'>" >> $OUTPUT
+          echo "<title>Documentation Index</title></head><body>" >> $OUTPUT
+          echo "<h1>Documentation Index</h1><ul>" >> $OUTPUT
+          find docs -type f -name "*.html" ! -name "index.html" | LC_ALL=C sort | while read file; do
+            relpath="${file#docs/}"
+            echo "<li><a href=\"./$relpath\">$relpath</a></li>" >> $OUTPUT
+          done
+          echo "</ul></body></html>" >> $OUTPUT
+
+      - name: Commit and push changes
+        run: |
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+          git add docs/index.html
+          if ! git diff --cached --quiet; then
+            git commit -m "Auto-generate docs/index.html"
+            git push
+          fi
